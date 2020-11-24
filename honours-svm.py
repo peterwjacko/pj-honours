@@ -14,10 +14,10 @@ from sklearn.pipeline import Pipeline
 
 # %%
 # import data
-objectFeatures = pd.read_csv('D:\ProgrammingProjects\honours\Data\FeatureStats_BCD.csv')
+objectFeatures = pd.read_csv('D:\Dropbox\Honours\Peter_Woodfordia\Data\ALLROI_FS_Merged.csv')
 # %%
 # rename columns
-objectFeatures.columns = ['ROI',
+'''objectFeatures.columns = ['ROI',
                         'Set',
                         'class',
                         'meanG',
@@ -32,13 +32,21 @@ objectFeatures.columns = ['ROI',
                         'roundness',
                         'meanGLCM',
                         'stdGLCM']
-# %%
+'''
 objectFeatures.head()
+# %%
+# create subset of labelled objects
+objectsLabelled = objectFeatures[objectFeatures["Class"].notna()] 
+
+# create subset of unlabelled objects
+objectsUnlabelled = objectFeatures[objectFeatures["Class"].isna()] 
+# %%
+#objectsUnlabelled.head()
 # %%
 # split data into train and test sets
 ####### drop/add object features here #######
-X = objectFeatures[objectFeatures.columns[3:]] # x set are the features
-y = objectFeatures['class'] # y set is the class labels (in this case species)
+X = objectsLabelled[objectsLabelled.columns[7:]] # x set are the features
+y = objectsLabelled['Class'] # y set is the class labels (in this case species)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=1, stratify=y)
 # random_state argument can be set to make the split reproducable. Same value = same split. Remove random_state argument for random each time.
@@ -78,7 +86,8 @@ params = {
     'C': [0.001, 0.01, 0.1, 1, 10, 100],
     'gamma': [0.001, 0.01, 0.1, 1, 10, 100]
     }
-#   'kernel': ['linear', 'poly', 'rbf', 'sigmoid']} 
+    #,'kernel': ['linear', 'poly', 'rbf', 'sigmoid']
+    #} 
 ## can add kernal to the testing parameters but can't plot in heat map below.
 
 # We can build Grid Search model using the above parameters. 
@@ -103,10 +112,11 @@ sns.heatmap(scores,
             yticklabels=params['C'])
 # %%
 # fit model again with optimal parameters and check accuracy
-clf_SVC = svm.SVC(C=1, gamma=1, random_state=0).fit(X_train_scaled,y_train)
+clf_SVC = svm.SVC(C=100, gamma=0.1, kernel='rbf', random_state=0).fit(X_train_scaled,y_train)
 
 y_pred = clf_SVC.predict(X_test)
 
+print('Kernel: RBF')
 print("Train score: " + str(clf_SVC.score(X_train_scaled, y_train)))
 print("Test score: " + str(clf_SVC.score(X_test_scaled, y_test)))
 print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
@@ -118,7 +128,7 @@ print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
 # combine together to have an full-blown estimator
 clf = Pipeline([('anova', SelectPercentile(chi2)),
                 ('scaler', MinMaxScaler()),
-                ('svc', svm.SVC(C=1, gamma=1, random_state=0))])
+                ('svc', svm.SVC(C=100, gamma=0.1, kernel='rbf', random_state=0))])
 
 # %%
 # Plot the cross-validation score as a function of percentile of features
@@ -140,3 +150,14 @@ plt.xlabel('Percentile')
 plt.ylabel('Accuracy Score')
 plt.axis('tight')
 plt.show()
+
+# %%
+# Generate confusion matrix
+matrix = metrics.plot_confusion_matrix(clf_SVC, X_test, y_test,
+                                 cmap=plt.cm.Blues,
+                                 normalize='true')
+plt.title('Confusion matrix for our classifier')
+plt.show(matrix)
+plt.show()
+
+# %%
