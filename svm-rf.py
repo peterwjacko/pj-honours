@@ -68,10 +68,11 @@ def featuresActive(featuresCombo, featuresDict):
 # %%
 # relabels classes to non-target
 def activeLabels(classSubset, objectsLabelled, classLabel):
-    allLabels = objectsLabelled[classLabel]
-    objectsLabelled.loc[objectsLabelled[classLabel].isin(classSubset), ['Species', 'Genus', 'Family']] = "Non-target"
+    classSubset = classSubset
+    objectsLabelled = objectsLabelled
+    objectsLabelled.loc[~objectsLabelled[classLabel].isin(classSubset), ['Species', 'Genus', 'Family']] = "Non-target"
     objectsLabelled = objectsLabelled.sort_values(by=[classLabel])
-    return allLabels, objectsLabelled
+    return objectsLabelled
 # %%
 # split data into train and test sets
 def splitData(featuresActiveList, classLabel, objectsLabelled, testSize):
@@ -275,7 +276,7 @@ def runClassification(classLabel, objectsLabelled,
                       activeModel, runHyperparamTest, 
                       customParams_rf, customParams_svm, featuresDict):
     featuresActiveList = featuresActive(featuresCombo, featuresDict)
-    allLabels, objectsLabelled = activeLabels(classSubset, objectsLabelled, classLabel)
+    objectsLabelled = activeLabels(classSubset, objectsLabelled, classLabel)
     uniqueLabel, X_train, X_test, y_train, y_test, X = splitData(featuresActiveList, classLabel, objectsLabelled, testSize)
     classFreqTrain, classFreqTest, featureList = dataMetrics(y_train, y_test, X_train)
     X_train_scaled, X_test_scaled = dataScaling(transformType, X_train, X_test)
@@ -325,14 +326,16 @@ classLabel = 'Genus'
 objectsLabelled = objectFeatures[objectFeatures[classLabel].notna()]
 objectsUnlabelled = objectFeatures[objectFeatures[classLabel].isna()] 
 # list of feature sets to be used
-featuresCombo = ['featuresSpectral',
-                 'featuresCHM',
+featuresCombo = ['featuresAll']
+#'featuresSpectral',
+                 #'featuresCHM',
                  #featuresVegIndex,
                  #featuresTextural,
-                 'featuresGeom']
+                 #'featuresGeom']
                  #featuresRandom]
-# which classes 
-classSubset = []
+# list which classes to keep 
+classSubset = ['Lantana']
+
 # % of data for testing
 testSize = float(0.33)
 # data transformation type ("MinMax", "Standard", "Normalize", None)
@@ -367,3 +370,4 @@ runClassification(classLabel,
                   featuresDict)
 
 # %%
+
