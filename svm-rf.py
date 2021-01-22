@@ -69,17 +69,15 @@ def featuresActive(featuresCombo, featuresDict):
 # relabels classes to non-target
 def activeLabels(classSubset, objectsLabelled, classLabel):
     allLabels = objectsLabelled[classLabel]
-    uniqueLabels = list(allLabels.unique())
-    uniqueLabels.sort()
     objectsLabelled.loc[objectsLabelled[classLabel].isin(classSubset), ['Species', 'Genus', 'Family']] = "Non-target"
     objectsLabelled = objectsLabelled.sort_values(by=[classLabel])
-    return allLabels, uniqueLabels, objectsLabelled
+    return allLabels, objectsLabelled
 # %%
 # split data into train and test sets
 def splitData(featuresActiveList, classLabel, objectsLabelled, testSize):
     X = objectsLabelled[featuresActiveList] # x set are the features
     y = objectsLabelled[classLabel] # y set is the class labels (in this case species)
-    uniqueLabel = objectsLabelled[classLabel] # TODO: confirm what this is for
+    uniqueLabel = objectsLabelled[classLabel]
     uniqueLabel = list(uniqueLabel.unique()) # get unique labels/classes
     uniqueLabel.sort() # sort in alphabetical
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=testSize, random_state=1, stratify=y)
@@ -277,20 +275,18 @@ def runClassification(classLabel, objectsLabelled,
                       activeModel, runHyperparamTest, 
                       customParams_rf, customParams_svm, featuresDict):
     featuresActiveList = featuresActive(featuresCombo, featuresDict)
-    allLabels, uniqueLabels, objectsLabelled = activeLabels(classSubset, objectsLabelled, classLabel)
+    allLabels, objectsLabelled = activeLabels(classSubset, objectsLabelled, classLabel)
     uniqueLabel, X_train, X_test, y_train, y_test, X = splitData(featuresActiveList, classLabel, objectsLabelled, testSize)
     classFreqTrain, classFreqTest, featureList = dataMetrics(y_train, y_test, X_train)
     X_train_scaled, X_test_scaled = dataScaling(transformType, X_train, X_test)
     # classification
     if activeModel == 'RF':
         if runHyperparamTest == 'on':
-            print("I am here: 1")
             paramGrid_rf = hyperparameterGridRF()
             bestParams_rf = testHyperparamsRF(paramGrid_rf, X_train_scaled, X_test_scaled, y_train, y_test)
             hyperParameters = bestParams_rf
             y_pred, clf, trainScore, testScore = applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test)
         elif runHyperparamTest == 'off':
-            print("I am here: 0")
             hyperParameters = customParams_rf
             y_pred, clf, trainScore, testScore = applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test)
     elif activeModel == 'SVM':
@@ -328,7 +324,7 @@ classLabel = 'Genus'
 # subsets labelled and unlabelled data
 objectsLabelled = objectFeatures[objectFeatures[classLabel].notna()]
 objectsUnlabelled = objectFeatures[objectFeatures[classLabel].isna()] 
-# list of features to be used
+# list of feature sets to be used
 featuresCombo = ['featuresSpectral',
                  'featuresCHM',
                  #featuresVegIndex,
@@ -336,17 +332,15 @@ featuresCombo = ['featuresSpectral',
                  'featuresGeom']
                  #featuresRandom]
 # which classes 
-classSubset = ['Water',
-               'Gravel',
-               'Structure']
+classSubset = []
 # % of data for testing
 testSize = float(0.33)
 # data transformation type ("MinMax", "Standard", "Normalize", None)
 transformType = 'MinMax'
 # which model to use
-activeModel = 'SVM' 
+activeModel = 'RF' 
 # run random grid test on hyperparams?
-runHyperparamTest = 'off'
+runHyperparamTest = 'on'
 # enter hyperparameters here:
 customParams_rf = {'n_estimators': 400,
                'max_features': 'sqrt',
