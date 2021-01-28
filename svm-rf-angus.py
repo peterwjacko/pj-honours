@@ -1,8 +1,6 @@
 #%%
-import os
 import random
-import numpy as np
-from numpy.lib.arraysetops import unique 
+import numpy as np 
 import pandas as pd
  
 import seaborn as sns
@@ -18,89 +16,35 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.pipeline import Pipeline
 
 from datetime import datetime, date, time
-from itertools import chain, combinations, combinations_with_replacement, permutations, product 
+from itertools import chain
 
 # %%
 # set feature groupings here
 
-featuresDict = {'featuresAll': ['Asymmetry', 'Border_index', 'Compactness', 'GLCM_Ang_2',
-                            'GLCM_Dissimilarity', 'GLCM_Entropy', 'GLCM_Homogeneity', 'GLCM_Mean',
-                            'GLCM_StdDev', 'Max_diff', 'Max_lidarCHM', 'Mean_blue', 'Mean_GLI',
-                            'Mean_green', 'Mean_GRVI', 'Mean_LidarCHM', 'Mean_red', 'Mean_VARI',
-                            'Mean_VVI', 'Roundness', 'Shape_index', 'Std_blue', 'Std_GLI',
-                            'Std_green', 'Std_GRVI', 'Std_lidarCHM', 'Std_red', 'Std_VARI',
-                            'Std_VVI'],
-            'featuresSpectral': ['Max_diff',
-                                 'Mean_blue',
-                                 'Mean_green',
-                                 'Mean_red',
-                                 'Std_blue',
-                                 'Std_green',
-                                 'Std_red'],
-            'featuresCHM': ['Max_lidarCHM',
-                            'Mean_LidarCHM',
-                            'Std_lidarCHM'],
-            'featuresVegIndex': ['Mean_GLI',
-                                 'Mean_GRVI',
-                                 'Mean_VARI',
-                                 'Mean_VVI',
-                                 'Std_GLI',
-                                 'Std_GRVI',
-                                 'Std_VARI',
-                                 'Std_VVI'],
-            'featuresTextural': ['GLCM_Ang_2',
-                                 'GLCM_Dissimilarity',
-                                 'GLCM_Entropy',
-                                 'GLCM_Homogeneity',
-                                 'GLCM_Mean',
-                                 'GLCM_StdDev'],
-            'featuresGeom': ['Asymmetry',
-                             'Border_index',
-                             'Compactness'],
-            'featuresRandom': random.sample, # TODO: this needs to be set up. When calling this key:value pair, add the arguments onto the script (featuresAll, 7)
-            'featuresCustomSubset': []}
-# %%
-# create a list of all unique feature set combinatation combinations
-def combineFeatures(featureSet):
-    if len(featureSet) > 1:
-        combosAll = list(combinations_with_replacement(featureSet, len(featureSet)))
-        combosSet = []
-        for i in range(0, len(combosAll)):
-            combosSet.append(list(set(combosAll[i])))
-        combosSet.sort()
-        combosSet = pd.unique(combosSet)
-        for i in range(0, len(combosSet)):
-            try:
-                if combosSet[i] == combosSet[i-1]:
-                    del combosSet[i]
-                elif combosSet[i] != combosSet[i-1]:
-                    continue
-            except (IndexError):
-                continue
-    elif len(featureSet) == 1:
-        combosSet = featureSet
-    return combosSet
+featuresDict = {'featuresRandom': random.sample, # TODO: this needs to be set up. When calling this key:value pair, add the arguments onto the script (featuresAll, 7)
+            'featuresCustomSubset': [],
+# NOTE: this key immediately below: 'featuresAngus' should match the key you enter into featureCombo in the variables section at the bottom
+            'featuresAngus': ['Area_Pxl', 'Asymmetry', 'BC_EG', 'BC_BRGB', 'BC_NGBI', 'BC_TG', 'Border_index', 'Brightness',
+                                'Compactness', 'Density', 'Excess_Green', 'Length_Pxl', 'Max_pixel_NR', 'Max_pixel_EG', 'Mean_CHM',
+                                'Min_pixel_NR', 'Negative_ExRed', 'NormalizedRed', 'NumberOfSubObjects', 'RadiusOfLargestEllipse',
+                                'Roundness', 'Shape_index', 'Skewness_CHM', 'Skewness_Red', 'StdDev_Red', 'StdDev_EG', 'StdDev_Blue',
+                                'StdDev_BRGB', 'StdDev_TriGreen', 'StdDev_NR', 'StdDev_NGBI', 'Width_Pxl']}
 #%%
 # feature combinations
 def featuresActive(featuresCombo, featuresDict):
-    try:
-        featuresActiveList = []
-        for featSet in featuresCombo:
-            featuresActiveList.append(featuresDict.get(featSet))
-        featuresActiveList = list(chain.from_iterable(featuresActiveList))
-    except TypeError:
-        featuresActiveList = featuresDict[featuresCombo[0]]
+    featuresActiveList = []
+    for featSet in featuresCombo:
+        featuresActiveList.append(featuresDict.get(featSet))
+    featuresActiveList = list(chain.from_iterable(featuresActiveList))
     return featuresActiveList              
 # %%
 # relabels classes to non-target
 def activeLabels(classSubset, objectsLabelled, classLabel):
     classSubset = classSubset
     objectsLabelled = objectsLabelled
-    if classSubset[0] != 'All':
-        objectsLabelled.loc[~objectsLabelled[classLabel].isin(classSubset), ['Species', 'Genus', 'Family']] = "Non-target"
-    elif classSubset[0] == 'All':
-        objectsLabelled.loc[objectsLabelled[classLabel].isin(['Water', 'Gravel', 'Structure']), ['Species', 'Genus', 'Family']] = "Non-target"
-    objectsLabelled = objectsLabelled.sort_values(by=[classLabel])    
+# NOTE: this needed to be the column that the class labels were in i.e "Genus"
+    objectsLabelled.loc[~objectsLabelled[classLabel].isin(classSubset), ['Genus']] = "Non-target" 
+    objectsLabelled = objectsLabelled.sort_values(by=[classLabel])
     return objectsLabelled
 # %%
 # split data into train and test sets
@@ -114,17 +58,12 @@ def splitData(featuresActiveList, classLabel, objectsLabelled, testSize):
     return uniqueLabel, X_train, X_test, y_train, y_test, X
 # %%
 # create metrics about the data
-def dataMetrics(y_train, y_test, X_train, featuresCombo):
-    dataMetricsDict = {'ClassTrainName': list(y_train.value_counts().index),
-    'ClassTrainFreq': list(y_train.value_counts()),
-    'ClassTestName': list(y_test.value_counts().index),
-    'ClassTestFreq': list(y_test.value_counts()),
-    'Features': list(X_train.columns),
-    'Feature Set': featuresCombo
-    }
-    dataMetricsOut = pd.DataFrame.from_dict(dataMetricsDict, orient='index')
-    return dataMetricsOut
-    #return classFreqTrain, classFreqTest, dataMetricsOut
+def dataMetrics(y_train, y_test, X_train):
+    classFreqTrain = y_train.value_counts()
+    classFreqTest = y_test.value_counts()
+    featureList = list(X_train.columns)
+    featureList = pd.DataFrame(featureList)
+    return classFreqTrain, classFreqTest, featureList
 # %%
 # scale/transform data here
 def dataScaling (transformType, X_train, X_test):
@@ -256,13 +195,17 @@ def modelInfo(clf, y_test, y_train, y_pred, trainScore, testScore, X_train_scale
                   'F1 (micro)': metrics.f1_score(y_test, y_pred, average='micro')}
     clfMetrics_df = pd.DataFrame.from_dict(clfMetrics, orient='index')
     clfParams_df = pd.DataFrame.from_dict(clf.get_params(), orient='index')
-    dataList = [clfMetrics_df, clfParams_df]
-    clfInfo = pd.concat(dataList, sort=False)
-    return clfInfo, clfMetrics
+    return clfMetrics_df, clfParams_df    
 # %%
 # create confusion matrix array
 def confMatrix(y_test, y_pred, uniqueLabel):
     confMat = pd.DataFrame(metrics.confusion_matrix(y_test, y_pred, labels=uniqueLabel, normalize='true'))
+    #confMat.columns = uniqueLabel
+    #confMat['Class'] = uniqueLabel # TODO: make sue this is in the correct order (matrix not missmatching)
+    return confMat
+# %%
+# plot confusion matrix
+def confMatrixPlot(confMat, uniqueLabel):
     plt.figure(figsize=(16, 14))
     confMatrixFig = sns.heatmap(confMat, 
                         annot=True,
@@ -272,38 +215,33 @@ def confMatrix(y_test, y_pred, uniqueLabel):
                         )
     loc, labels = plt.xticks()
     confMatrixFig.set_xticklabels(labels, rotation=45, ha='right')
-    confMat.columns = uniqueLabel
-    confMat['Class'] = uniqueLabel # TODO: make sue this is in the correct order (matrix not missmatching)
-    return confMat, confMatrixFig
+    return confMatrixFig
 # %%
 # export everything
 # create a directory that has ~/output/SVM or ~/output/RF
-def exportAll(activeModel, confMat, dataMetricsOut, 
-              confMatrixFig, clfInfo,
+def exportAll(activeModel, confMat, 
+              confMatrixFig, clfMetrics_df, 
+              clfParams_df, featureList, 
+              classFreqTrain, classFreqTest, 
               featImpPlot, feature_imp):
-    UniqueID = random.randint(10000, 99999)
-    outputPath = str(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\{UniqueID}')
-    try:
-        os.makedirs(outputPath, exist_ok=False)
-    except OSError:
-        print("Directory exists, trying again")
-        UniqueID = random.randint(10000, 99999)
-        outputPath = str(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\{UniqueID}')
-        os.makedirs(outputPath, exist_ok=False)
     TimeNow = datetime.now() 
-    TimeNow = TimeNow.strftime('%d-%m-%H-%M')
+    TimeNow = TimeNow.strftime('%m-%d-%H-%M')
+# NOTE: part of this was missing. {activeModel} is dynamic and will put the output in the appropriate folder
+    outputPath = str(f'F:\pj-honours-main\pj-honours-main\TEST\MY_DATA\Output\{activeModel}\{activeModel}_')   
     fig = confMatrixFig.get_figure()
-    fig.savefig(f'{outputPath}\{UniqueID}_{activeModel}_CM_{TimeNow}.png')
-    cfm = confMat.to_csv(f'{outputPath}\{UniqueID}_{activeModel}_CM_{TimeNow}.csv')
-    clfInfo = clfInfo.to_csv(f'{outputPath}\{UniqueID}_{activeModel}ClfInfo_{TimeNow}.csv')
-    dataMetricsOut = dataMetricsOut.to_csv(f'{outputPath}\{UniqueID}_{activeModel}DataInfo_{TimeNow}.csv')
+    fig.savefig(f'{outputPath}CLF_CM_{TimeNow}.png')
+    cfm = confMat.to_csv(f'{outputPath}CLF_CM_{TimeNow}.csv')
+    clfResultOut = clfMetrics_df.to_csv(f'{outputPath}CLF_Metrics_{TimeNow}.csv')
+    clfParams = clfParams_df.to_csv(f'{outputPath}CLF_Params_{TimeNow}.csv')
+    clfFeaturesOut = featureList.to_csv(f'{outputPath}CLF_Features_{TimeNow}.csv')
+    clfClassFreqTrainOut = classFreqTrain.to_csv(f'{outputPath}CLF_ClassFreqTrain_{TimeNow}.csv')
+    clfClassFreqTestOut = classFreqTest.to_csv(f'{outputPath}CLF_ClassFreqTest_{TimeNow}.csv')
     if feature_imp is not 0:
         fip = featImpPlot.get_figure()
-        fip.savefig(f'{outputPath}\{UniqueID}_{activeModel}FIP_{TimeNow}.png')
-        feature_imp_export = feature_imp.to_csv(f'{outputPath}\{UniqueID}_{activeModel}FI_{TimeNow}.csv')
+        fip.savefig(f'{outputPath}CLF_FIP_{TimeNow}.png')
+        feature_imp_export = feature_imp.to_csv(f'{outputPath}_CLF_FI_{TimeNow}.csv')
     elif feature_imp == 0:
         print("SVM: No feature importance generated")
-    return UniqueID
 # %%
 # put it all together
 def runClassification(classLabel, objectsLabelled, 
@@ -314,7 +252,7 @@ def runClassification(classLabel, objectsLabelled,
     featuresActiveList = featuresActive(featuresCombo, featuresDict)
     objectsLabelled = activeLabels(classSubset, objectsLabelled, classLabel)
     uniqueLabel, X_train, X_test, y_train, y_test, X = splitData(featuresActiveList, classLabel, objectsLabelled, testSize)
-    dataMetricsOut = dataMetrics(y_train, y_test, X_train, featuresCombo)
+    classFreqTrain, classFreqTest, featureList = dataMetrics(y_train, y_test, X_train)
     X_train_scaled, X_test_scaled = dataScaling(transformType, X_train, X_test)
     # classification
     if activeModel == 'RF':
@@ -335,10 +273,10 @@ def runClassification(classLabel, objectsLabelled,
         elif runHyperparamTest == 'off':
             hyperParameters = customParams_svm
             y_pred, clf, trainScore, testScore = applySVM(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test)
-    # create outputt
-    clfInfo, clfMetrics = modelInfo(clf, y_test, y_train, y_pred, trainScore, testScore, X_train_scaled)
-    confMat, confMatrixFig = confMatrix(y_test, y_pred, uniqueLabel)
-    #confMatrixFig = confMatrixPlot(confMat, uniqueLabel)
+    # create outputs
+    clfMetrics_df, clfParams_df = modelInfo(clf, y_test, y_train, y_pred, trainScore, testScore, X_train_scaled)
+    confMat = confMatrix(y_test, y_pred, uniqueLabel)
+    confMatrixFig = confMatrixPlot(confMat, uniqueLabel)
     if activeModel == 'RF':
         feature_imp = getFI(clf, X)
         featImpPlot = FI_plot(feature_imp)
@@ -346,50 +284,40 @@ def runClassification(classLabel, objectsLabelled,
         feature_imp = 0
         featImpPlot = 0
     # export
-    UniqueID = exportAll(activeModel, confMat, dataMetricsOut, 
-                        confMatrixFig, clfInfo, featImpPlot, feature_imp)
-    return UniqueID, featuresActiveList, clfMetrics
+    exportAll(activeModel, confMat, confMatrixFig, 
+              clfMetrics_df, clfParams_df, featureList, 
+              classFreqTrain, classFreqTest, featImpPlot, 
+              feature_imp)
+print("Complete")
 
 # %%
 ## variables
 # data table
 # TODO: write function for importing
-objectFeatures = pd.read_csv('D:\Dropbox\Honours\Peter_Woodfordia\Data\ALLROI_FS_Merged.csv')
+objectFeatures = pd.read_csv('F:\pj-honours-main\pj-honours-main\TEST\MY_DATA\S5_STATS_ALL.csv')
 # column that contains the class label
 classLabel = 'Genus'
 # subsets labelled and unlabelled data
 objectsLabelled = objectFeatures[objectFeatures[classLabel].notna()]
 objectsUnlabelled = objectFeatures[objectFeatures[classLabel].isna()] 
 # list of feature sets to be used
-featureSet = ['featuresSpectral',
-              'featuresCHM',
-              'featuresVegIndex',
-              'featuresTextural',
-              'featuresGeom']
-#featureSet = ['featuresAll']
-#featureSet = ['featuresRandom']                 
-
-featuresSetCombos = combineFeatures(featureSet)
-         
+# NOTE: this should reflect the key in featuresDict
+featuresCombo = ['featuresAngus']  
+#'featuresSpectral',
+                 #'featuresCHM',
+                 #featuresVegIndex,
+                 #featuresTextural,
+                 #'featuresGeom']
+                 #featuresRandom]
 # list which classes to keep 
-classSubset = ['All']
-
-'''['Grass',
-               'Eucalyptus',
-               'Lophostemon',
-               'Lantana',
-               'Corymbia',
-               'Pinus',
-               'Syncarpia',
-               'Angophora']'''
-
-
+# NOTE: Class(es) you want here. ['Rhizophora', 'Ceriops', 'etc']
+classSubset = ['Rhizophora'] 
 # % of data for testing
 testSize = float(0.33)
 # data transformation type ("MinMax", "Standard", "Normalize", None)
 transformType = 'MinMax'
 # which model to use
-activeModel = 'SVM' 
+activeModel = 'RF' 
 # run random grid test on hyperparams?
 runHyperparamTest = 'on'
 # enter hyperparameters here:
@@ -405,34 +333,17 @@ customParams_svm = {'C': 200,
                     'kernel': 'rbf'}
  
 # %%
-#featuresCombo = featureSet # if featureSet = featuresAll
-summaryTable = pd.DataFrame(columns=['UID', 'Features', 'F1 Weighted' ])
-for count, featuresCombo in enumerate(featuresSetCombos):
-    modelUID, featureComboList, clfMetrics = runClassification(classLabel,
-                                                        objectsLabelled,
-                                                        featuresCombo,
-                                                        classSubset,
-                                                        testSize,
-                                                        transformType,
-                                                        activeModel,
-                                                        runHyperparamTest,
-                                                        customParams_rf,
-                                                        customParams_svm,
-                                                        featuresDict)
-    summaryTable = summaryTable.append({'UID': modelUID,
-                                        'Features': featuresCombo,
-                                        'F1 Weighted': clfMetrics['F1 (weighted)']},
-                                    ignore_index=True)
-TimeNow = datetime.now() 
-TimeNow = TimeNow.strftime('%d-%m-%H-%M')
-summaryTable = summaryTable.to_csv(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\SummaryTable_{TimeNow}.csv')    
- # %%
-# TODO: apply classification
-# https://machinelearningmastery.com/make-predictions-scikit-learn/
-
-# TODO: export as shapefile with geopandas
+runClassification(classLabel, 
+                  objectsLabelled, 
+                  featuresCombo, 
+                  classSubset, 
+                  testSize, 
+                  transformType, 
+                  activeModel, 
+                  runHyperparamTest, 
+                  customParams_rf, 
+                  customParams_svm,
+                  featuresDict)
 
 # %%
-summaryTable
 
-# %%

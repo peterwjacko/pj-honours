@@ -53,6 +53,7 @@ dependencies:
   - pyqt=5.9.2=py38ha925a31_4
   - python=3.8.5=h5fd99cc_1
   - python-dateutil=2.8.1=py_0
+  - python_abi=3.8=1_cp38
   - pytz=2020.1=py_0
   - pywin32=227=py38he774522_1
   - pyzmq=19.0.2=py38ha925a31_1
@@ -79,4 +80,4 @@ dependencies:
   - zeromq=4.3.2=ha925a31_3
   - zlib=1.2.11=h62dcd97_4
   - zstd=1.4.5=h04227a9_0
-
+prefix: C:\Users\Study\miniconda3\envs\ml-env
