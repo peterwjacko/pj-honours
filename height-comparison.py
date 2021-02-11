@@ -19,8 +19,8 @@ import spm1d
 # %%
 # import data
 
-lidarRaster = gr.from_file(r'D:\Dropbox\Honours\Peter_Woodfordia\Data\Lidar\Rasters\LidarCHM_ROI_A_Clipped.tif')
-droneRaster = gr.from_file(r'D:\Dropbox\Honours\Peter_Woodfordia\Data\Drone\ROI_A\DroneCHM_ROI_A_Clipped_1m.tif')
+lidarRaster = gr.from_file(r'D:\Dropbox\Honours\Peter_Woodfordia\Data\Lidar\Rasters\CHM_lidar_ClippedBB.tif')
+droneRaster = gr.from_file(r'D:\Dropbox\Honours\Peter_Woodfordia\Data\Drone\DroneCHM_merged_1m.tif')
 crowns = gp.read_file(r'D:\Dropbox\Honours\Peter_Woodfordia\Data\Vector\RandomBuffs.shp')
 #heights = pd.read_csv(r'D:\Dropbox\Honours\Peter_Woodfordia\Data\MaxHeights_AllMethods.csv')
 
@@ -88,46 +88,69 @@ sns.histplot(x='Height',
 # %%
 # subset crowns to ROI A for testing
 
-BuffsROIA = crowns.loc[crowns['ROI'] == 'A']
-BuffsROIA.head()
+buffsFriday = crowns.loc[crowns.ROI.isin(['A', 'B'])]
+buffsMonday = crowns.loc[crowns.ROI.isin(['C', 'D'])]
 
 # %%
 # clip raster with shape
-
-lidarClipped = lidarRaster.clip(BuffsROIA, keep=False)
-droneClipped = droneRaster.clip(BuffsROIA, keep=False)
+lidarClipped = lidarRaster.clip(crowns, keep=False)
+droneClipped = droneRaster.clip(crowns, keep=False)
 # %%
-lidarClipped[8].plot()
+# clip raster by each day
+droneFriday = droneRaster.clip(buffsFriday, keep=False)
+droneMonday = droneRaster.clip(buffsMonday, keep=False)
+# %%
+droneFriday[10].plot()
 
 # %%
-lidarROIA = pd.DataFrame()
-droneROIA = pd.DataFrame()
+fridayCHM = pd.DataFrame()
+mondayCHM = pd.DataFrame()
+
+for crown in range(0, len(droneFriday), 1):
+    clipped_df = gr.to_pandas(droneFriday[crown])
+    fridayCHM[crown] = clipped_df['value']
+
+for crown in range(0, len(droneMonday), 1):
+    clipped_df = gr.to_pandas(droneMonday[crown])
+    mondayCHM[crown] = clipped_df['value']
+    
+# %%
+fridayCHM.head()
+# %%
+lidarchm = pd.DataFrame()
+dronechm = pd.DataFrame()
 
 for crown in range(0, len(lidarClipped), 1):
     clipped_df = gr.to_pandas(lidarClipped[crown])
-    lidarROIA[crown] = clipped_df['value']
+    lidarchm[crown] = clipped_df['value']
 
 for crown in range(0, len(droneClipped), 1):
     clipped_df = gr.to_pandas(droneClipped[crown])
-    droneROIA[crown] = clipped_df['value']
+    dronechm[crown] = clipped_df['value']
     
 # %%
-lidarROIAdrop = lidarROIA.sample(n = 97)
+print(lidarchm.shape)
+print(dronechm.shape)
+lidarchmdrop = lidarchm.sample(n = 97)
+print(lidarchmdrop.shape)
+print(dronechm.shape)
 # %%
-lidarROIAMelt = lidarROIAdrop.melt()
-lidarROIAMelt['CHM'] = '1'
+lidarMelt = lidarchmdrop.melt()
+lidarMelt['CHM'] = '1'
 
-droneROIAMelt = droneROIA.melt()
-droneROIAMelt['CHM'] = '2'
+droneMelt = dronechm.melt()
+droneMelt['CHM'] = '2'
 
-stacked = pd.concat([lidarROIAMelt, droneROIAMelt])
+stacked = pd.concat([lidarMelt, droneMelt])
 stacked.rename(columns = {'variable': 'Tree',
                               'value': 'Height'},
                    inplace=True)
+stacked['Tree'].replace(0, 999, inplace=True)
+stacked.fillna(0, inplace=True)
 
 # %%
-lidarfreq = lidarROIAMelt.value_counts('variable')
-dronefreq = droneROIAMelt.value_counts('variable')
+lidarfreq = lidarMelt.value_counts('variable')
+dronefreq = droneMelt.value_counts('variable')
 
 # %%
 A = stacked['CHM']
@@ -137,9 +160,9 @@ Y = stacked['Height']
 # The factor B is nested inside factor A.
 # https://stackoverflow.com/questions/48273276/nested-anova-in-python-with-spm1d-cant-print-f-statistics-and-p-values
 
-alpha        = 0.05
-FF           = spm1d.stats.anova2nested(Y, A, B, equal_var=True)
-FFi          = FF.inference(0.05)
+alpha = 0.05
+FF = spm1d.stats.anova2nested(Y, A, B, equal_var=True)
+FFi = FF.inference(0.05)
 
 p = FFi.get_p_values()
 f = FFi.get_f_values()
@@ -160,3 +183,9 @@ sns.boxplot(x=stacked['CHM'],
 plt.show()
 # %%
 print(FFi)
+# %%
+stacked.to_csv("D:\Dropbox\Honours\Peter_Woodfordia\Output\heights.csv")
+# %%
+Y
+# %%
+stacked.isna().sum()

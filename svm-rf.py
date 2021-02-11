@@ -68,7 +68,7 @@ def combineFeatures(featureSet):
         for i in range(0, len(combosAll)):
             combosSet.append(list(set(combosAll[i])))
         combosSet.sort()
-        combosSet = pd.unique(combosSet)
+        #combosSet = pd.unique(combosSet)
         for i in range(0, len(combosSet)):
             try:
                 if combosSet[i] == combosSet[i-1]:
@@ -262,9 +262,10 @@ def modelInfo(clf, y_test, y_train, y_pred, trainScore, testScore, X_train_scale
 # %%
 # create confusion matrix array
 def confMatrix(y_test, y_pred, uniqueLabel):
-    confMat = pd.DataFrame(metrics.confusion_matrix(y_test, y_pred, labels=uniqueLabel, normalize='true'))
+    confMatNorm = pd.DataFrame(metrics.confusion_matrix(y_test, y_pred, labels=uniqueLabel, normalize='all'))
+    confMat = pd.DataFrame(metrics.confusion_matrix(y_test, y_pred, labels=uniqueLabel, normalize=None))
     plt.figure(figsize=(16, 14))
-    confMatrixFig = sns.heatmap(confMat, 
+    confMatrixFig = sns.heatmap(confMatNorm, 
                         annot=True,
                         xticklabels=uniqueLabel,
                         yticklabels=uniqueLabel,
@@ -274,11 +275,11 @@ def confMatrix(y_test, y_pred, uniqueLabel):
     confMatrixFig.set_xticklabels(labels, rotation=45, ha='right')
     confMat.columns = uniqueLabel
     confMat['Class'] = uniqueLabel # TODO: make sue this is in the correct order (matrix not missmatching)
-    return confMat, confMatrixFig
+    return confMat, confMatNorm, confMatrixFig
 # %%
 # export everything
 # create a directory that has ~/output/SVM or ~/output/RF
-def exportAll(activeModel, confMat, dataMetricsOut, 
+def exportAll(activeModel, confMat, confMatNorm, dataMetricsOut, 
               confMatrixFig, clfInfo,
               featImpPlot, feature_imp):
     UniqueID = random.randint(10000, 99999)
@@ -295,6 +296,7 @@ def exportAll(activeModel, confMat, dataMetricsOut,
     fig = confMatrixFig.get_figure()
     fig.savefig(f'{outputPath}\{UniqueID}_{activeModel}_CM_{TimeNow}.png')
     cfm = confMat.to_csv(f'{outputPath}\{UniqueID}_{activeModel}_CM_{TimeNow}.csv')
+    cfmN = confMatNorm.to_csv(f'{outputPath}\{UniqueID}_{activeModel}_NormCM_{TimeNow}.csv')
     clfInfo = clfInfo.to_csv(f'{outputPath}\{UniqueID}_{activeModel}ClfInfo_{TimeNow}.csv')
     dataMetricsOut = dataMetricsOut.to_csv(f'{outputPath}\{UniqueID}_{activeModel}DataInfo_{TimeNow}.csv')
     if feature_imp is not 0:
@@ -337,7 +339,7 @@ def runClassification(classLabel, objectsLabelled,
             y_pred, clf, trainScore, testScore = applySVM(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test)
     # create outputt
     clfInfo, clfMetrics = modelInfo(clf, y_test, y_train, y_pred, trainScore, testScore, X_train_scaled)
-    confMat, confMatrixFig = confMatrix(y_test, y_pred, uniqueLabel)
+    confMat, confMatNorm, confMatrixFig = confMatrix(y_test, y_pred, uniqueLabel)
     #confMatrixFig = confMatrixPlot(confMat, uniqueLabel)
     if activeModel == 'RF':
         feature_imp = getFI(clf, X)
@@ -346,7 +348,7 @@ def runClassification(classLabel, objectsLabelled,
         feature_imp = 0
         featImpPlot = 0
     # export
-    UniqueID = exportAll(activeModel, confMat, dataMetricsOut, 
+    UniqueID = exportAll(activeModel, confMat, confMatNorm, dataMetricsOut, 
                         confMatrixFig, clfInfo, featImpPlot, feature_imp)
     return UniqueID, featuresActiveList, clfMetrics
 
@@ -389,7 +391,7 @@ testSize = float(0.33)
 # data transformation type ("MinMax", "Standard", "Normalize", None)
 transformType = 'MinMax'
 # which model to use
-activeModel = 'SVM' 
+activeModel = 'RF' 
 # run random grid test on hyperparams?
 runHyperparamTest = 'on'
 # enter hyperparameters here:
