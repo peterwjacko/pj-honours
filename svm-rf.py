@@ -253,7 +253,9 @@ def modelInfo(clf, y_test, y_train, y_pred, trainScore, testScore, X_train_scale
                   'Recall (weighted)': metrics.recall_score(y_test, y_pred, average='weighted'),
                   'Recall (micro)': metrics.recall_score(y_test, y_pred, average='micro'),
                   'F1 (weighted)': metrics.f1_score(y_test, y_pred, average='weighted'),
-                  'F1 (micro)': metrics.f1_score(y_test, y_pred, average='micro')}
+                  'F1 (micro)': metrics.f1_score(y_test, y_pred, average='micro'),
+                  'MCC': metrics.matthews_corrcoef(y_test, y_pred),
+                  'Kappa': metrics.cohen_kappa_score(y_test, y_pred)}
     clfMetrics_df = pd.DataFrame.from_dict(clfMetrics, orient='index')
     clfParams_df = pd.DataFrame.from_dict(clf.get_params(), orient='index')
     dataList = [clfMetrics_df, clfParams_df]
@@ -284,6 +286,7 @@ def exportAll(activeModel, confMat, confMatNorm, dataMetricsOut,
               featImpPlot, feature_imp):
     UniqueID = random.randint(10000, 99999)
     outputPath = str(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\{UniqueID}')
+    #str(f'/home/peter/data/DataStorage/{activeModel}/{UniqueID}')
     try:
         os.makedirs(outputPath, exist_ok=False)
     except OSError:
@@ -357,6 +360,7 @@ def runClassification(classLabel, objectsLabelled,
 # data table
 # TODO: write function for importing
 objectFeatures = pd.read_csv('D:\Dropbox\Honours\Peter_Woodfordia\Data\ALLROI_FS_Merged.csv')
+# /home/peter/pj-honours/Data/AllROI_FS_Merged.csv
 # column that contains the class label
 classLabel = 'Genus'
 # subsets labelled and unlabelled data
@@ -408,7 +412,7 @@ customParams_svm = {'C': 200,
  
 # %%
 #featuresCombo = featureSet # if featureSet = featuresAll
-summaryTable = pd.DataFrame(columns=['UID', 'Features', 'F1 Weighted' ])
+summaryTable = pd.DataFrame(columns=['UID', 'Features', 'F1 Weighted', 'MCC' ])
 for count, featuresCombo in enumerate(featuresSetCombos):
     modelUID, featureComboList, clfMetrics = runClassification(classLabel,
                                                         objectsLabelled,
@@ -423,11 +427,27 @@ for count, featuresCombo in enumerate(featuresSetCombos):
                                                         featuresDict)
     summaryTable = summaryTable.append({'UID': modelUID,
                                         'Features': featuresCombo,
-                                        'F1 Weighted': clfMetrics['F1 (weighted)']},
+                                        'F1 Weighted': clfMetrics['F1 (weighted)'],
+                                        'MCC': clfMetrics['MCC'],
+                                        'Kappa': clfMetrics['Kappa']},
                                     ignore_index=True)
 TimeNow = datetime.now() 
 TimeNow = TimeNow.strftime('%d-%m-%H-%M')
-summaryTable = summaryTable.to_csv(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\SummaryTable_{TimeNow}.csv')    
+summaryTable = summaryTable.to_csv(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\SummaryTable_{TimeNow}.csv')
+# /home/peter/data/DataStorage/{activeModel}/SummaryTable_{TimeNow}.csv    
+# %%
+featuresCombo = featureSet # if featureSet = featuresAll
+runClassification(classLabel,
+                  objectsLabelled,
+                    featuresCombo,
+                    classSubset,
+                    testSize,
+                    transformType,
+                    activeModel,
+                    runHyperparamTest,
+                    customParams_rf,
+                    customParams_svm,
+                    featuresDict)
  # %%
 # TODO: apply classification
 # https://machinelearningmastery.com/make-predictions-scikit-learn/
