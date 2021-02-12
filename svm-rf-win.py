@@ -284,10 +284,9 @@ def confMatrix(y_test, y_pred, uniqueLabel):
 def exportAll(activeModel, confMat, confMatNorm, dataMetricsOut, 
               confMatrixFig, clfInfo,
               featImpPlot, feature_imp):
-    UniqueID = random.randint(10000, 99999)
-    outputPath = str(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\{UniqueID}')
-    #str(f'/home/peter/data/DataStorage/{activeModel}/{UniqueID}')
-    try:
+    try:    
+        UniqueID = random.randint(10000, 99999)
+        outputPath = str(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\{UniqueID}')
         os.makedirs(outputPath, exist_ok=False)
     except OSError:
         print("Directory exists, trying again")
@@ -359,20 +358,19 @@ def runClassification(classLabel, objectsLabelled,
 ## variables
 # data table
 # TODO: write function for importing
-objectFeatures = pd.read_csv('D:\Dropbox\Honours\Peter_Woodfordia\Data\ALLROI_FS_Merged.csv')
-# /home/peter/pj-honours/Data/AllROI_FS_Merged.csv
+objectFeatures = pd.read_csv(r'D:\Dropbox\Honours\Peter_Woodfordia\Data\ALLROI_FS_Merged.csv')
 # column that contains the class label
 classLabel = 'Genus'
 # subsets labelled and unlabelled data
 objectsLabelled = objectFeatures[objectFeatures[classLabel].notna()]
 objectsUnlabelled = objectFeatures[objectFeatures[classLabel].isna()] 
 # list of feature sets to be used
-featureSet = ['featuresSpectral',
+'''featureSet = ['featuresSpectral',
               'featuresCHM',
               'featuresVegIndex',
               'featuresTextural',
-              'featuresGeom']
-#featureSet = ['featuresAll']
+              'featuresGeom']'''
+featureSet = ['featuresAll']
 #featureSet = ['featuresRandom']                 
 
 featuresSetCombos = combineFeatures(featureSet)
@@ -434,7 +432,6 @@ for count, featuresCombo in enumerate(featuresSetCombos):
 TimeNow = datetime.now() 
 TimeNow = TimeNow.strftime('%d-%m-%H-%M')
 summaryTable = summaryTable.to_csv(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\SummaryTable_{TimeNow}.csv')
-# /home/peter/data/DataStorage/{activeModel}/SummaryTable_{TimeNow}.csv    
 # %%
 featuresCombo = featureSet # if featureSet = featuresAll
 runClassification(classLabel,
