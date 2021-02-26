@@ -27,9 +27,8 @@ featuresDict = {'featuresAll': ['Asymmetry', 'Border_index', 'Compactness', 'GLC
                             'GLCM_Dissimilarity', 'GLCM_Entropy', 'GLCM_Homogeneity', 'GLCM_Mean',
                             'GLCM_StdDev', 'Max_diff', 'Max_lidarCHM', 'Mean_blue', 'Mean_GLI',
                             'Mean_green', 'Mean_GRVI', 'Mean_LidarCHM', 'Mean_red', 'Mean_VARI',
-                            'Mean_VVI', 'Roundness', 'Shape_index', 'Std_blue', 'Std_GLI',
-                            'Std_green', 'Std_GRVI', 'Std_lidarCHM', 'Std_red', 'Std_VARI',
-                            'Std_VVI'],
+                            'Roundness', 'Shape_index', 'Std_blue', 'Std_GLI',
+                            'Std_green', 'Std_GRVI', 'Std_lidarCHM', 'Std_red', 'Std_VARI'],
             'featuresSpectral': ['Max_diff',
                                  'Mean_blue',
                                  'Mean_green',
@@ -43,11 +42,9 @@ featuresDict = {'featuresAll': ['Asymmetry', 'Border_index', 'Compactness', 'GLC
             'featuresVegIndex': ['Mean_GLI',
                                  'Mean_GRVI',
                                  'Mean_VARI',
-                                 'Mean_VVI',
                                  'Std_GLI',
                                  'Std_GRVI',
-                                 'Std_VARI',
-                                 'Std_VVI'],
+                                 'Std_VARI'],
             'featuresTextural': ['GLCM_Ang_2',
                                  'GLCM_Dissimilarity',
                                  'GLCM_Entropy',
@@ -92,26 +89,27 @@ def featuresActive(featuresCombo, featuresDict):
         featuresActiveList = featuresDict[featuresCombo[0]]
     return featuresActiveList              
 # %%
-# relabels classes to non-target
+# relabels classes to Other
 def activeLabels(classSubset, objectsLabelled, classLabel):
     classSubset = classSubset
     objectsLabelled = objectsLabelled
     if classSubset[0] != 'All':
-        objectsLabelled.loc[~objectsLabelled[classLabel].isin(classSubset), ['Species', 'Genus', 'Family']] = "Non-target"
+        objectsLabelled.loc[~objectsLabelled[classLabel].isin(classSubset), ['Species', 'Genus', 'Family']] = "Other"
     elif classSubset[0] == 'All':
-        objectsLabelled.loc[objectsLabelled[classLabel].isin(['Water', 'Gravel', 'Structure']), ['Species', 'Genus', 'Family']] = "Non-target"
+        objectsLabelled.loc[objectsLabelled[classLabel].isin(['Water', 'Gravel', 'Structure']), ['Species', 'Genus', 'Family']] = "Other"
     objectsLabelled = objectsLabelled.sort_values(by=[classLabel])    
     return objectsLabelled
 # %%
 # split data into train and test sets
-def splitData(featuresActiveList, classLabel, objectsLabelled, testSize):
+def splitData(featuresActiveList, classLabel, objectsLabelled, testSize, objectFeatures):
     X = objectsLabelled[featuresActiveList] # x set are the features
     y = objectsLabelled[classLabel] # y set is the class labels (in this case species)
+    AllX = objectFeatures[featuresActiveList]
     uniqueLabel = objectsLabelled[classLabel]
     uniqueLabel = list(uniqueLabel.unique()) # get unique labels/classes
     uniqueLabel.sort() # sort in alphabetical
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=testSize, random_state=1, stratify=y)
-    return uniqueLabel, X_train, X_test, y_train, y_test, X
+    return uniqueLabel, X_train, X_test, y_train, y_test, X, AllX
 # %%
 # create metrics about the data
 def dataMetrics(y_train, y_test, X_train, featuresCombo):
@@ -124,21 +122,29 @@ def dataMetrics(y_train, y_test, X_train, featuresCombo):
     }
     dataMetricsOut = pd.DataFrame.from_dict(dataMetricsDict, orient='index')
     return dataMetricsOut
-    #return classFreqTrain, classFreqTest, dataMetricsOut
 # %%
 # scale/transform data here
-def dataScaling (transformType, X_train, X_test):
-    if transformType == "MinMax":
-        scaler = MinMaxScaler()
-    elif transformType == "Standard":
-        scaler = StandardScaler()
-    elif transformType == "Normalize":
-        scaler = Normalizer()
+def dataScaling (transformType, X_train, X_test, AllX):
+    if transformType is not None:
+        if transformType == "MinMax":
+            scaler = MinMaxScaler()
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
+            AllX = scaler.transform(AllX)
+        elif transformType == "Standard":
+            scaler = StandardScaler()
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
+        elif transformType == "Normalize":
+            scaler = Normalizer()
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
     else:
         print("No data transformation selected. Using original values.")
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    return(X_train_scaled, X_test_scaled)
+        X_train_scaled = X_train
+        X_test_scaled = X_test
+        AllX = AllX
+    return(X_train_scaled, X_test_scaled, AllX)
 # %%
 # create RF hyperparamter values grid
 def hyperparameterGridRF():
@@ -173,16 +179,21 @@ def testHyperparamsRF(paramGrid_rf, X_train_scaled, X_test_scaled, y_train, y_te
     print("Train score:" + str(rf_random.score(X_train_scaled, y_train)))
     print("Test score:" + str(rf_random.score(X_test_scaled, y_test)))
     return bestParams_rf
+
 # %%
 # create and fit model
-def applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test):
+def applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test, objectFeatures, AllX, featuresActiveList):
     clf_RF = RandomForestClassifier() # create classifier
     clf_RF.set_params(**hyperParameters)
     clf_RF.fit(X_train_scaled, y_train) # fit classifier
     y_pred = clf_RF.predict(X_test_scaled) # predict class using test set
     trainScore = clf_RF.score(X_train_scaled, y_train)
     testScore = clf_RF.score(X_test_scaled, y_test)
-    return y_pred, clf_RF, trainScore, testScore
+    allObjPred = clf_RF.predict(AllX)
+    objectFeatures['predictedLabel'] = allObjPred
+    print(allObjPred)
+    print(objectFeatures['predictedLabel'])
+    return y_pred, clf_RF, trainScore, testScore, objectFeatures
 # %%
 # feature importance
 def getFI(clf_RF, X):
@@ -264,7 +275,7 @@ def modelInfo(clf, y_test, y_train, y_pred, trainScore, testScore, X_train_scale
 # %%
 # create confusion matrix array
 def confMatrix(y_test, y_pred, uniqueLabel):
-    confMatNorm = pd.DataFrame(metrics.confusion_matrix(y_test, y_pred, labels=uniqueLabel, normalize='all'))
+    confMatNorm = pd.DataFrame(metrics.confusion_matrix(y_test, y_pred, labels=uniqueLabel, normalize='true'))
     confMat = pd.DataFrame(metrics.confusion_matrix(y_test, y_pred, labels=uniqueLabel, normalize=None))
     plt.figure(figsize=(16, 14))
     confMatrixFig = sns.heatmap(confMatNorm, 
@@ -283,7 +294,7 @@ def confMatrix(y_test, y_pred, uniqueLabel):
 # create a directory that has ~/output/SVM or ~/output/RF
 def exportAll(activeModel, confMat, confMatNorm, dataMetricsOut, 
               confMatrixFig, clfInfo,
-              featImpPlot, feature_imp):
+              featImpPlot, feature_imp, objectFeatures):
     UniqueID = random.randint(10000, 99999)
     outputPath = str(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\{activeModel}\{UniqueID}')
     #str(f'/home/peter/data/DataStorage/{activeModel}/{UniqueID}')
@@ -302,6 +313,7 @@ def exportAll(activeModel, confMat, confMatNorm, dataMetricsOut,
     cfmN = confMatNorm.to_csv(f'{outputPath}\{UniqueID}_{activeModel}_NormCM_{TimeNow}.csv')
     clfInfo = clfInfo.to_csv(f'{outputPath}\{UniqueID}_{activeModel}ClfInfo_{TimeNow}.csv')
     dataMetricsOut = dataMetricsOut.to_csv(f'{outputPath}\{UniqueID}_{activeModel}DataInfo_{TimeNow}.csv')
+    prediction_df = objectFeatures.to_csv(f'{outputPath}\{UniqueID}_{activeModel}classifiedData_{TimeNow}.csv')
     if feature_imp is not 0:
         fip = featImpPlot.get_figure()
         fip.savefig(f'{outputPath}\{UniqueID}_{activeModel}FIP_{TimeNow}.png')
@@ -311,26 +323,26 @@ def exportAll(activeModel, confMat, confMatNorm, dataMetricsOut,
     return UniqueID
 # %%
 # put it all together
-def runClassification(classLabel, objectsLabelled, 
+def runClassification(classLabel, objectsLabelled, objectFeatures, 
                       featuresCombo, classSubset, 
                       testSize, transformType, 
                       activeModel, runHyperparamTest, 
                       customParams_rf, customParams_svm, featuresDict):
     featuresActiveList = featuresActive(featuresCombo, featuresDict)
     objectsLabelled = activeLabels(classSubset, objectsLabelled, classLabel)
-    uniqueLabel, X_train, X_test, y_train, y_test, X = splitData(featuresActiveList, classLabel, objectsLabelled, testSize)
+    uniqueLabel, X_train, X_test, y_train, y_test, X, AllX = splitData(featuresActiveList, classLabel, objectsLabelled, testSize, objectFeatures)
     dataMetricsOut = dataMetrics(y_train, y_test, X_train, featuresCombo)
-    X_train_scaled, X_test_scaled = dataScaling(transformType, X_train, X_test)
+    X_train_scaled, X_test_scaled, AllX = dataScaling(transformType, X_train, X_test, AllX)
     # classification
     if activeModel == 'RF':
         if runHyperparamTest == 'on':
             paramGrid_rf = hyperparameterGridRF()
             bestParams_rf = testHyperparamsRF(paramGrid_rf, X_train_scaled, X_test_scaled, y_train, y_test)
             hyperParameters = bestParams_rf
-            y_pred, clf, trainScore, testScore = applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test)
+            y_pred, clf, trainScore, testScore, objectFeatures = applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test, objectFeatures, AllX)
         elif runHyperparamTest == 'off':
             hyperParameters = customParams_rf
-            y_pred, clf, trainScore, testScore = applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test)
+            y_pred, clf, trainScore, testScore, objectFeatures = applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test, objectFeatures, AllX)
     elif activeModel == 'SVM':
         if runHyperparamTest == 'on':
             paramGrid_svm = hyperparameterGridSVM()
@@ -352,7 +364,7 @@ def runClassification(classLabel, objectsLabelled,
         featImpPlot = 0
     # export
     UniqueID = exportAll(activeModel, confMat, confMatNorm, dataMetricsOut, 
-                        confMatrixFig, clfInfo, featImpPlot, feature_imp)
+                        confMatrixFig, clfInfo, featImpPlot, feature_imp, objectFeatures)
     return UniqueID, featuresActiveList, clfMetrics
 
 # %%
@@ -368,10 +380,11 @@ objectsLabelled = objectFeatures[objectFeatures[classLabel].notna()]
 objectsUnlabelled = objectFeatures[objectFeatures[classLabel].isna()] 
 # list of feature sets to be used
 featureSet = ['featuresSpectral',
-              'featuresCHM',
+              #'featuresCHM',
               'featuresVegIndex',
-              'featuresTextural',
-              'featuresGeom']
+              'featuresTextural'
+              #'featuresGeom'
+              ]
 #featureSet = ['featuresAll']
 #featureSet = ['featuresRandom']                 
 
@@ -393,17 +406,17 @@ classSubset = ['All']
 # % of data for testing
 testSize = float(0.33)
 # data transformation type ("MinMax", "Standard", "Normalize", None)
-transformType = 'MinMax'
+transformType = "MinMax"
 # which model to use
-activeModel = 'RF' 
+activeModel = "RF" 
 # run random grid test on hyperparams?
-runHyperparamTest = 'on'
+runHyperparamTest = "off"
 # enter hyperparameters here:
-customParams_rf = {'n_estimators': 400,
+customParams_rf = {'n_estimators': 200,
                'max_features': 'sqrt',
-               'max_depth': 1,
-               'min_samples_split': 5,
-               'min_samples_leaf': 100,
+               'max_depth': 50,
+               'min_samples_split': 2,
+               'min_samples_leaf': 1,
                'bootstrap': True}
 
 customParams_svm = {'C': 200,
@@ -416,6 +429,7 @@ summaryTable = pd.DataFrame(columns=['UID', 'Features', 'F1 Weighted', 'MCC' ])
 for count, featuresCombo in enumerate(featuresSetCombos):
     modelUID, featureComboList, clfMetrics = runClassification(classLabel,
                                                         objectsLabelled,
+                                                        objectfeatures,
                                                         featuresCombo,
                                                         classSubset,
                                                         testSize,
@@ -439,22 +453,25 @@ summaryTable = summaryTable.to_csv(f'D:\Dropbox\Honours\Peter_Woodfordia\Output\
 featuresCombo = featureSet # if featureSet = featuresAll
 runClassification(classLabel,
                   objectsLabelled,
-                    featuresCombo,
-                    classSubset,
-                    testSize,
-                    transformType,
-                    activeModel,
-                    runHyperparamTest,
-                    customParams_rf,
-                    customParams_svm,
-                    featuresDict)
+                  objectFeatures,
+                  featuresCombo,
+                  classSubset,
+                  testSize,
+                  transformType,
+                  activeModel,
+                  runHyperparamTest,
+                  customParams_rf,
+                  customParams_svm,
+                  featuresDict)
  # %%
-# TODO: apply classification
-# https://machinelearningmastery.com/make-predictions-scikit-learn/
-
 # TODO: export as shapefile with geopandas
 
 # %%
-summaryTable
-
+objectFeatures[['Max_diff',
+                'Mean_blue',
+                'Mean_green',
+                'Mean_red',
+                'Std_blue',
+                'Std_green',
+                'Std_red']]
 # %%
