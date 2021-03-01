@@ -1,6 +1,7 @@
 # %%
 import pandas as pd
 import numpy as np
+import statistics as stat
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -160,16 +161,16 @@ sns.despine()
 OADeltaVIFig = OADeltaVI.get_figure()
 OADeltaVIFig.savefig(r"C:\Users\Study\OneDrive - University of the Sunshine Coast\Documents\Thesis\Manuscript\Figures\Table5_ModelPerf\F1-All.pdf", bbox_inches='tight', dpi=300)
 # %%
-accValues.sort_values(axis='index', by='UA-Lan round', inplace=True)
+accValues.sort_values(axis='index', by='UA-Pine round', inplace=True)
 plt.figure(figsize=(13,6))
 sns.set_theme(style="ticks")
-OADeltaVI = sns.barplot(x = accValues['Features'], y = accValues['UA-Lan round'], palette='rocket', orient='v')
+OADeltaVI = sns.boxplot(x=accValues['CHM'], y = accValues['UA-Pine round'], color='#3182bd', orient='v')
 OADeltaVI.set(xlabel='Model', ylabel='PA (%)')
-loc, labels = plt.xticks()
-OADeltaVI.set_xticklabels(accValues['Features'], rotation=45, ha='right')
+#loc, labels = plt.xticks()
+#OADeltaVI.set_xticklabels(accValues['CHM'], rotation=45, ha='right')
 sns.despine()
 OADeltaVIFig = OADeltaVI.get_figure()
-OADeltaVIFig.savefig(r"C:\Users\Study\OneDrive - University of the Sunshine Coast\Documents\Thesis\Manuscript\Figures\Table5_ModelPerf\UA-Lan.pdf", bbox_inches='tight', dpi=300)
+OADeltaVIFig.savefig(r"C:\Users\Study\OneDrive - University of the Sunshine Coast\Documents\Thesis\Manuscript\Figures\Table5_ModelPerf\UA-Pine-CHM.pdf", bbox_inches='tight', dpi=300)
 # %%
 accValues.sort_values(axis='index', by='UA-Pine round', inplace=True)
 plt.figure(figsize=(13,6))
@@ -285,4 +286,51 @@ sns.despine()
 OARGBvCHMFig = OARGBvCHM.get_figure()
 OARGBvCHMFig.savefig(r"C:\Users\Study\OneDrive - University of the Sunshine Coast\Documents\Thesis\Manuscript\Figures\Table5_ModelPerf\UA-Pine-RGBvCHM-Delta.pdf", bbox_inches='tight', dpi=300)
 
+# %%
+plt.figure(figsize=(13,6))
+sns.set_theme(style="ticks")
+OARGBvCHM = sns.plot(accValues['UA-Lan round'], palette='colorblind', order=['RGB', 'TEX', 'RGB-TEX'], capsize=0.025, orient='v')
+OARGBvCHM.set(xlabel='Feature groups', ylabel='UA (%)')
+loc, labels = plt.xticks()
+sns.despine()
+OARGBvCHMFig = OARGBvCHM.get_figure()
+OARGBvCHMFig.savefig(r"C:\Users\Study\OneDrive - University of the Sunshine Coast\Documents\Thesis\Manuscript\Figures\Table5_ModelPerf\UA-Pine-RGBvTEX-Delta.pdf", bbox_inches='tight', dpi=300)
+ 
+# %%
+g = sns.FacetGrid(accValues, col=['Lantana', 'Slash pine'], col_wrap=2, height=1, ylim=(0, 100))
+g.map(sns.pointplot, "solutions", "score", order=[1, 2, 3], color=".3", ci=None)
+
+# %%
+objectFeatures = pd.read_csv('D:\Dropbox\Honours\Peter_Woodfordia\Data\ALLROI_FS_Merged.csv')
+
+# %%
+trees = objectFeatures.loc[objectFeatures['Genus'].isin(['Angophora', 'Corymbia', 'Eucalyptus', 'Lophostemon', 'Pinus', 'Syncarpia']), ['Mean_LidarCHM']]
+trees['Type'] = 'Tree canopy'
+lantana = objectFeatures.loc[objectFeatures['Genus'].isin(['Lantana']), ['Mean_LidarCHM']]
+lantana['Type'] = 'Lantana'
+
+stacked = pd.concat([trees, lantana])
+stacked
+
+# %%
+# %%
+# boxplot of monday CHM: Drone Vs Lidar
+sns.set_theme(style="ticks")
+heightsplot = sns.boxplot(x='Type',
+                        y='Mean_LidarCHM',
+                        data=stacked,
+                        hue=None,
+                        orient="v")
+heightsplot.set(xlabel='Cover type', ylabel='Mean CHM')
+sns.despine()
+plt.show()
+heightsplotfig = heightsplot.get_figure()
+heightsplotfig.savefig(r"C:\Users\Study\OneDrive - University of the Sunshine Coast\Documents\Thesis\Manuscript\Figures\heightsplot.pdf", bbox_inches='tight', dpi=300)
+# %%
+stat.mean(lantana['Mean_LidarCHM'])
+stat.stdev(lantana['Mean_LidarCHM'])
+
+# %%
+stat.mean(trees['Mean_LidarCHM'])
+#stat.stdev(trees['Mean_LidarCHM'])
 # %%

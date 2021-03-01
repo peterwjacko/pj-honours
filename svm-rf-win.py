@@ -379,19 +379,19 @@ classLabel = 'Genus'
 objectsLabelled = objectFeatures[objectFeatures[classLabel].notna()]
 objectsUnlabelled = objectFeatures[objectFeatures[classLabel].isna()] 
 # list of feature sets to be used
-featureSet = ['featuresSpectral',
+'''featureSet = ['featuresSpectral',
               #'featuresCHM',
               'featuresVegIndex',
               'featuresTextural'
               #'featuresGeom'
-              ]
-#featureSet = ['featuresAll']
+              ]'''
+featureSet = ['featuresAll']
 #featureSet = ['featuresRandom']                 
 
 featuresSetCombos = combineFeatures(featureSet)
          
 # list which classes to keep 
-classSubset = ['All']
+classSubset = ['Lantana', 'Pinus']
 
 '''['Grass',
                'Eucalyptus',
@@ -406,7 +406,7 @@ classSubset = ['All']
 # % of data for testing
 testSize = float(0.33)
 # data transformation type ("MinMax", "Standard", "Normalize", None)
-transformType = "MinMax"
+transformType = None
 # which model to use
 activeModel = "RF" 
 # run random grid test on hyperparams?
