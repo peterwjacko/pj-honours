@@ -1,24 +1,34 @@
 #%%
+# general packages
+
 import os
 import random
 import numpy as np
 from numpy.lib.arraysetops import unique 
 import pandas as pd
+from datetime import datetime, date, time
+from itertools import chain, combinations, combinations_with_replacement, permutations, product 
+
+# plotting
  
 import seaborn as sns
 import matplotlib.pyplot as plt
+
+# machine learning
 
 from sklearn import metrics
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectPercentile, f_classif, chi2
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.model_selection import train_test_split, StratifiedShuffleSplit, GridSearchCV, cross_val_score, RandomizedSearchCV
+from sklearn.model_selection import train_test_split, StratifiedShuffleSplit, cross_val_score, RandomizedSearchCV
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.pipeline import Pipeline
 
-from datetime import datetime, date, time
-from itertools import chain, combinations, combinations_with_replacement, permutations, product 
+# geospatial
+
+import georasters as gr
+import geopandas as gp
 
 # %%
 # set feature groupings here
@@ -182,7 +192,7 @@ def testHyperparamsRF(paramGrid_rf, X_train_scaled, X_test_scaled, y_train, y_te
 
 # %%
 # create and fit model
-def applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test, objectFeatures, AllX, featuresActiveList):
+def applyRF(hyperParameters, X_train_scaled, X_test_scaled, y_train, y_test, objectFeatures, AllX):
     clf_RF = RandomForestClassifier() # create classifier
     clf_RF.set_params(**hyperParameters)
     clf_RF.fit(X_train_scaled, y_train) # fit classifier
@@ -296,13 +306,13 @@ def exportAll(activeModel, confMat, confMatNorm, dataMetricsOut,
               confMatrixFig, clfInfo,
               featImpPlot, feature_imp, objectFeatures):
     UniqueID = random.randint(10000, 99999)
-    outputPath = str(f'/home/peter/data/DataStorage/{activeModel}/{UniqueID}')
+    outputPath = str(f'/home/peter/Dropbox/Documents/Personal/manuscript-01/output/{activeModel}/{UniqueID}')
     try:
         os.makedirs(outputPath, exist_ok=False)
     except OSError:
         print("Directory exists, trying again")
         UniqueID = random.randint(10000, 99999)
-        outputPath = str(f'/home/peter/data/DataStorage/{activeModel}/{UniqueID}')
+        outputPath = str(f'/home/peter/Dropbox/Documents/Personal/manuscript-01/output/{activeModel}/{UniqueID}')
         os.makedirs(outputPath, exist_ok=False)
     TimeNow = datetime.now() 
     TimeNow = TimeNow.strftime('%d-%m-%H-%M')
@@ -313,7 +323,7 @@ def exportAll(activeModel, confMat, confMatNorm, dataMetricsOut,
     clfInfo = clfInfo.to_csv(f'{outputPath}/{UniqueID}_{activeModel}ClfInfo_{TimeNow}.csv')
     dataMetricsOut = dataMetricsOut.to_csv(f'{outputPath}/{UniqueID}_{activeModel}DataInfo_{TimeNow}.csv')
     prediction_df = objectFeatures.to_csv(f'{outputPath}/{UniqueID}_{activeModel}classifiedData_{TimeNow}.csv')
-    if feature_imp is not 0:
+    if feature_imp != 0:
         fip = featImpPlot.get_figure()
         fip.savefig(f'{outputPath}/{UniqueID}_{activeModel}FIP_{TimeNow}.png')
         feature_imp_export = feature_imp.to_csv(f'{outputPath}/{UniqueID}_{activeModel}FI_{TimeNow}.csv')
@@ -370,21 +380,21 @@ def runClassification(classLabel, objectsLabelled, objectFeatures,
 ## variables
 # data table
 # TODO: write function for importing
-objectFeatures = pd.read_csv('D:\Dropbox\Honours\Peter_Woodfordia\Data\ALLROI_FS_Merged.csv')
-# /home/peter/pj-honours/Data/AllROI_FS_Merged.csv
+objectFeatures = pd.read_csv(r'/home/peter/Dropbox/Projects/pj-honours/Data/feature-stats_all-objects.csv')
+# 
 # column that contains the class label
 classLabel = 'Genus'
 # subsets labelled and unlabelled data
 objectsLabelled = objectFeatures[objectFeatures[classLabel].notna()]
 objectsUnlabelled = objectFeatures[objectFeatures[classLabel].isna()] 
 # list of feature sets to be used
-'''featureSet = ['featuresSpectral',
-              #'featuresCHM',
+featureSet = ['featuresSpectral',
+              'featuresCHM',
               'featuresVegIndex',
               'featuresTextural'
-              #'featuresGeom'
-              ]'''
-featureSet = ['featuresAll']
+              'featuresGeom'
+              ]
+#featureSet = ['featuresAll']
 #featureSet = ['featuresRandom']                 
 
 featuresSetCombos = combineFeatures(featureSet)
@@ -407,7 +417,7 @@ testSize = float(0.33)
 # data transformation type ("MinMax", "Standard", "Normalize", None)
 transformType = None
 # which model to use
-activeModel = "RF" 
+activeModel = "SVM" 
 # run random grid test on hyperparams?
 runHyperparamTest = "off"
 # enter hyperparameters here:
@@ -423,12 +433,11 @@ customParams_svm = {'C': 200,
                     'kernel': 'rbf'}
  
 # %%
-#featuresCombo = featureSet # if featureSet = featuresAll
 summaryTable = pd.DataFrame(columns=['UID', 'Features', 'F1 Weighted', 'MCC' ])
 for count, featuresCombo in enumerate(featuresSetCombos):
     modelUID, featureComboList, clfMetrics = runClassification(classLabel,
                                                         objectsLabelled,
-                                                        objectfeatures,
+                                                        objectFeatures,
                                                         featuresCombo,
                                                         classSubset,
                                                         testSize,
@@ -446,8 +455,7 @@ for count, featuresCombo in enumerate(featuresSetCombos):
                                     ignore_index=True)
 TimeNow = datetime.now() 
 TimeNow = TimeNow.strftime('%d-%m-%H-%M')
-summaryTable = summaryTable.to_csv(f'/home/peter/data/DataStorage/{activeModel}/SummaryTable_{TimeNow}.csv.csv')
-# /home/peter/data/DataStorage/{activeModel}/SummaryTable_{TimeNow}.csv    
+summaryTable = summaryTable.to_csv(f'/home/peter/Dropbox/Documents/Personal/manuscript-01/output/{activeModel}/SummaryTable_{TimeNow}.csv')
 # %%
 featuresCombo = featureSet # if featureSet = featuresAll
 runClassification(classLabel,
@@ -465,12 +473,3 @@ runClassification(classLabel,
  # %%
 # TODO: export as shapefile with geopandas
 
-# %%
-objectFeatures[['Max_diff',
-                'Mean_blue',
-                'Mean_green',
-                'Mean_red',
-                'Std_blue',
-                'Std_green',
-                'Std_red']]
-# %%
